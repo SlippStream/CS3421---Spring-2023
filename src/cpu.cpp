@@ -1,41 +1,64 @@
-#include <cpu.h>
+#include "cpu.h"
 
-cpu::cpu()
+emulCpu::emulCpu()
 {
+    reset();
 }
 
-void cpu::doCycleWork()
+void emulCpu::initialize(emulMemory *mem)
 {
-    // TODO
+    memory = mem;
 }
 
-void cpu::reset()
+void emulCpu::doCycleWork()
 {
-    // TODO
+    // SHIFT
+    for (int i = NUM_REG - 1; i > 0; i--)
+    {
+        registers[i] = registers[i - 1];
+    }
+
+    // FETCH
+    registers[0] = memory->fetch(programCounter);
+
+    // INCREMENT
+    programCounter++;
 }
 
-void cpu::setReg(int index, hexByte newVal)
+void emulCpu::reset()
 {
+    programCounter = 0;
+    for (int i = 0; i < NUM_REG; i++)
+    {
+        registers[i] = 0;
+    }
+}
+
+void emulCpu::setReg(int index, uint8_t newVal)
+{
+    if (index == NUM_REG)
+    {
+        programCounter = newVal;
+        return;
+    }
     registers[index] = newVal;
 }
 
-void cpu::dump()
+void emulCpu::dump()
 {
-    // TODO
-}
-/**
- * PC is 8
- * rest is 0-7
- * @throws if the given string is not a register
- * @return the index of the given register string in the cpu
- */
-int cpu::getRegisterIndex(char registerName[])
-{
-    if (sizeof(registerName) != 2)
-    {
-        throw 1;
-    }
+    std::cout << "PC: " << std::setw(2) << std::setfill('0')
+              << std::uppercase << std::hex << (int)programCounter << std::endl;
 
+    for (int i = 0; i < NUM_REG; i++)
+    {
+        std::cout << "R" << (char)(i + 'A')
+                  << ": " << std::setw(2) << std::setfill('0')
+                  << std::uppercase << std::hex << (int)registers[i] << std::endl;
+    }
+    std::cout << std::endl;
+}
+int emulCpu::getRegisterIndex(char const (&registerName)[3])
+{
     if (registerName == "PC")
     {
         return 8;
@@ -43,7 +66,8 @@ int cpu::getRegisterIndex(char registerName[])
 
     if (registerName[0] != 'R')
     {
-        throw 2;
+        throw 0;
     }
+
     return registerName[1] - 'A';
 }
