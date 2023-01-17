@@ -1,23 +1,13 @@
 CC=g++
-CFLAGS=-Wall -g
+CFLAGS=-Wall -g -fno-common
+SOURCES := $(shell find -name '*.cpp')
+HEADERS := $(shell find -name '*.h')
+OUTPUT := cs3421_emul
 
-main: clean cs3421_emul
+all: clean $(OUTPUT)
 
-cs3421_emul: emulator.o cpu.o clock.o memory.o
-	$(CC) $(CFLAGS) -o cs3421_emul emulator.o cpu.o clock.o memory.o
-
-emulator.o: emulator.cpp clock_client.h memory.h cpu.h clock.h
-	$(CC) $(CFLAGS) -c emulator.cpp
-
-clock_client.o: clock_client.h
-
-memory.o: memory.h
-
-cpu.o: cpu.h clock_client.h memory.h
-
-clock.o: clock.h cpu.h
+$(OUTPUT): $(SOURCES) $(HEADERS)
+	$(CC) $(CFLAGS) -o $(OUTPUT) $(SOURCES)
 
 clean:
-	find . -name '*.o' -delete
-
-
+	$(RM) $(OUTPUT)

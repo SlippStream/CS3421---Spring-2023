@@ -1,40 +1,120 @@
 #include "emulator.h"
 
-const std::string MEM_DEVICE_NAME = "memory";
-const std::string CPU_DEVICE_NAME = "cpu";
-const std::string CLOCK_DEVICE_NAME = "clock";
-
-enum devices
+struct tagged_args
 {
-    dev_cpu = 0,
-    /** end clock clients */
-    dev_memory = 1,
-    dev_clock = 2
+    devices device;
+    commands command;
+    std::string *args;
 };
 
 emulator::emulator()
 {
-    em_cpu->initialize(em_memory);
+    em_cpu->initialize(em_dmemory, em_imemory);
     clock_clients = std::vector<clockClient *>();
 
     // Add clock clients
     clock_clients.push_back(em_cpu);
+    clock_clients.push_back(em_dmemory);
 }
 
-std::vector<std::string> emulator::tokenize(std::string str)
+struct tagged_args *emulator::tokenize(std::string str)
 {
-    std::vector<std::string> vec;
     std::stringstream ss;
     ss << str;
+    devices device;
+    commands command;
 
     std::string temp;
+    // Grab device
     while (ss >> temp)
     {
-        // std::cout << temp << std::endl;
+        // std::cout << "device " << temp << std::endl;
+        if (temp == "memory")
+        {
+            device = DEV_DMEMORY;
+            break;
+        }
+        if (temp == "cpu")
+        {
+            device = DEV_CPU;
+            break;
+        }
+        if (temp == "imemory")
+        {
+            device = DEV_IMEMORY;
+            break;
+        }
+        if (temp == "clock")
+        {
+            device = DEV_CLOCK;
+            break;
+        }
+        std::cout << "Device " << temp << " not found!" << std::endl;
+        return nullptr;
+    }
+    // Grab command
+    while (ss >> temp)
+    {
+        if (temp == "create")
+        {
+            command = CMD_CREATE;
+            break;
+        }
+
+        if (temp == "reset")
+        {
+            command = CMD_RESET;
+            break;
+        }
+
+        if (temp == "dump")
+        {
+            command = CMD_DUMP;
+            break;
+        }
+
+        if (temp == "set")
+        {
+            command = CMD_SET;
+            break;
+        }
+
+        if (temp == "tick")
+        {
+            command = CMD_TICK;
+            break;
+        }
+    }
+    // Grab arguments
+    std::vector<std::string> vec;
+    while (ss >> temp)
+    {
+        if (device == DEV_IMEMORY && command == CMD_SET && temp == "file")
+        {
+            continue;
+        }
+        if (device == DEV_CPU && command == CMD_SET && temp == "reg")
+        {
+            continue;
+        }
         vec.push_back(temp);
     }
-    // std::cout << std::endl;
-    return vec;
+
+    std::string *args;
+    if (vec.size() > 0)
+    {
+        //! WILL CAUSE SEGFAULT IF GIVEN NO ARGUMENTS
+        args = new std::string[vec.size()];
+        for (unsigned int i = 0; i < vec.size(); i++)
+        {
+            args[i] = vec.at(i);
+        }
+    }
+    struct tagged_args *p = new tagged_args;
+    p->device = device;
+    p->command = command;
+    p->args = args;
+    return p;
 }
 
 void emulator::emulate(std::ifstream &stream)
@@ -42,113 +122,136 @@ void emulator::emulate(std::ifstream &stream)
     if (stream.is_open())
     {
         std::string buffer;
-        std::string device;
-        std::string command;
-        std::string token;
         while (!stream.eof())
         {
             std::getline(stream, buffer);
-            std::vector<std::string> vec = tokenize(buffer);
-            auto it = vec.begin();
+            tagged_args *tags = tokenize(buffer);
 
-            // WILL CAUSE SEGFAULT IF GIVEN NO ARGUMENTS
-            device = *it;
-            it++;
-            command = *it;
-            it++;
-            std::string tokens[vec.size() - 2];
-            for (int i = 0; it != vec.end(); it++)
-            {
-                tokens[i] = *it;
-                // std::cout << tokens[i] << std::endl;
-                i++;
-            }
-
-            passCommand(device, command, tokens);
+            passCommand(tags->device, tags->command, tags->args);
         }
         return;
     }
     std::cout << "File not open!";
 }
 
-void emulator::passCommand(std::string device, std::string command, std::string args[])
+void emulator::passCommand(devices device, commands command, std::string args[])
 {
-#pragma region MEMORY_COMMANDS
-    if (device == MEM_DEVICE_NAME)
+    switch (device)
     {
-        if (command == "create")
+    case DEV_DMEMORY:
+        switch (command)
         {
-            em_memory->create((int)std::stoul(args[0], nullptr, 16));
-            return;
+        case CMD_CREATE:
+            em_dmemory->create((int)std::stoul(args[0], nullptr, 16));
+            break;
+        case CMD_RESET:
+            em_dmemory->reset();
+            break;
+        case CMD_DUMP:
+            em_dmemory->dump(std::stoul(args[0], nullptr, 16) & 0xff, std::stoul(args[1], nullptr, 16) & 0xff);
+            break;
+        case CMD_SET:
+            em_dmemory->set(std::stoul(args[0], nullptr, 16) & 0xFF, std::stoul(args[1], nullptr, 16) & 0xFF, args, 2);
+            break;
+        default:
+            std::cout << "Command not found for device DATA MEMORY!" << std::endl;
+            break;
         }
-        if (command == "reset")
+        break;
+    case DEV_IMEMORY:
+        switch (command)
         {
-            em_memory->reset();
-            return;
+        case CMD_CREATE:
+            em_imemory->create(std::stoul(args[0], nullptr, 16) & 0xFFFFFFFF);
+            break;
+        case CMD_RESET:
+            em_imemory->reset();
+            break;
+        case CMD_DUMP:
+            em_imemory->dump(std::stoul(args[0], nullptr, 16) & 0xFFFFFFFF, std::stoul(args[1], nullptr, 16) & 0xFFFFFFFF);
+            break;
+        case CMD_SET:
+        {
+            std::ifstream file;
+            file.open(args[1]);
+            if (file.fail())
+            {
+                //! ERROR File fails to open
+                std::cout << "Error opening file " << args[1] << "!" << std::endl;
+                throw 2;
+            }
+
+            std::string line;
+            std::stringstream ss;
+            std::string temp;
+            std::vector<std::string> vec;
+            while (!file.eof())
+            {
+                std::getline(file, temp);
+                vec.push_back(temp);
+            }
+
+            // std::cout << "vec size " << vec.size() << std::endl;
+            wordContainer wc(vec.size());
+            unsigned int i = 0;
+            for (auto it = vec.begin(); it != vec.end(); it++)
+            {
+                wc.set(i, std::stoul(*it, nullptr, 16) & 0xFFFFF);
+                i++;
+            }
+            em_imemory->set(std::stoul(args[0], nullptr, 16) & 0xFF, &wc);
+            break;
         }
-        if (command == "dump")
-        {
-            em_memory->dump(std::stoul(args[0], nullptr, 16) & 0xff, std::stoul(args[1], nullptr, 16) & 0xff);
-            return;
+        default:
+            std::cout << "Command not found for device IMEMORY!" << std::endl;
+            break;
         }
-        if (command == "set")
+        break;
+    case DEV_CLOCK:
+        switch (command)
         {
-            em_memory->set(std::stoul(args[0], nullptr, 16) & 0xFF, std::stoul(args[1], nullptr, 16) & 0xFF, args, 2);
-            return;
-        }
-        return;
-    }
-#pragma endregion MEMORY_COMMANDS
-#pragma region CLOCK_COMMANDS
-    if (device == CLOCK_DEVICE_NAME)
-    {
-        if (command == "reset")
-        {
+        case CMD_RESET:
             em_clock->reset();
-            return;
-        }
-        if (command == "tick")
-        {
-            int i = std::stoi(args[0]);
-            em_clock->tick(i, clock_clients);
-            return;
-        }
-        if (command == "dump")
-        {
+            break;
+        case CMD_TICK:
+            em_clock->tick(std::stoi(args[0]), clock_clients);
+            break;
+        case CMD_DUMP:
             em_clock->dump();
-            return;
+            break;
+        default:
+            std::cout << "Command not found for device CLOCK!" << std::endl;
+            break;
         }
-        return;
-    }
-#pragma endregion CLOCK_COMMANDS
-#pragma region CPU_COMMANDS
-    if (device == CPU_DEVICE_NAME)
-    {
-        if (command == "reset")
+        break;
+    case DEV_CPU:
+        switch (command)
         {
+        case CMD_RESET:
             em_cpu->reset();
-            return;
-        }
-        if (command == "set" && args[0] == "reg")
-        {
+            break;
+        case CMD_SET:
             em_cpu->setReg(std::stoi(args[1], nullptr, 16), std::stoul(args[2], nullptr, 16) & 0xFF);
-            return;
-        }
-        if (command == "dump")
-        {
+            break;
+        case CMD_DUMP:
             em_cpu->dump();
-            return;
+            break;
+        default:
+            std::cout << "Command not found for device CPU!" << std::endl;
+            break;
         }
-        return;
+        break;
+    default:
+        std::cout << "Device not found!" << std::endl;
+        break;
     }
-#pragma endregion CPU_COMMANDS
 }
 
 int main(int argc, char *argv[])
 {
     if (argc != 2)
     {
-        // ERROR too many arguments
+        //! ERROR too many arguments
         std::cout << "Invalid number of arguments!" << std::endl;
         return 1;
     }
@@ -157,7 +260,7 @@ int main(int argc, char *argv[])
 
     if (file.fail())
     {
-        // ERROR File fails to open
+        //! ERROR File fails to open
         std::cout << "Error opening file " << argv[1] << "!" << std::endl;
         return 2;
     }
