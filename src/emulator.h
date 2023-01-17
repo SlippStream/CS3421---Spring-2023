@@ -14,7 +14,8 @@ enum devices
     DEV_DMEMORY = 2,
     /** end clock clients */
     DEV_CLOCK = 3,
-    DEV_IMEMORY = 4
+    DEV_IMEMORY = 4,
+    DEV_CACHE = 5
 };
 enum commands
 {
@@ -23,6 +24,8 @@ enum commands
     CMD_DUMP,
     CMD_SET,
     CMD_TICK,
+    CMD_ON,
+    CMD_OFF
 };
 class emulator
 {
@@ -34,6 +37,7 @@ public:
     emulInstrMemory *em_imemory = new emulInstrMemory();
     emulClock *em_clock = new emulClock();
     emulCpu *em_cpu = new emulCpu();
+    emulCache *em_cache = new emulCache();
     emulator();
     /**
      * Replaces all instances of a given delimeter with null terminator characters

@@ -6,6 +6,9 @@
 #ifndef CS3421_NICKZIMANSKI_IMEMORY_H
 #include "imemory.h"
 #endif
+#ifndef CS3421_NICKZIMANSKI_CACHE_H
+#include "cache.h"
+#endif
 #include <vector>
 
 enum entropyInstructions
@@ -35,6 +38,7 @@ class emulCpu : public stateMachine
 private:
     uint8_t registers[8];
     uint8_t programCounter;
+    uint16_t tickCounter;
     emulDataMemory *dmemory;
     emulInstrMemory *imemory;
     entropyInstructions pendingInstruction;
@@ -59,6 +63,7 @@ public:
     void executeInstruction();
     void executeDelayedInstruction();
     void releaseToIdle();
+    void increment();
 
     void instr_add();
     void instr_addImmediate();

@@ -188,7 +188,9 @@ void emulCpu::dump()
                   << ": 0x" << std::setw(2) << std::setfill('0')
                   << std::uppercase << std::hex << (int)registers[i] << std::endl;
     }
-    std::cout << std::endl;
+
+    std::cout << "TC: " << std::dec << (int)tickCounter << std::endl
+              << std::endl;
 }
 int emulCpu::getRegisterIndex(char const (&registerName)[3])
 {
@@ -208,7 +210,7 @@ int emulCpu::getRegisterIndex(char const (&registerName)[3])
 void emulCpu::releaseToIdle()
 {
     state = IDLE;
-    programCounter++;
+    increment();
     workToDo = false;
     *donePtr = false;
 }
@@ -310,8 +312,14 @@ void emulCpu::instr_storeWord()
 void emulCpu::instr_halt()
 {
     state = HALTED;
-    programCounter++;
+    increment();
     workToDo = false;
+}
+
+void emulCpu::increment()
+{
+    tickCounter++;
+    programCounter++;
 }
 
 int emulCpu::twoCpCmp(uint8_t a, uint8_t b)

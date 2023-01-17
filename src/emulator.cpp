@@ -49,6 +49,11 @@ struct tagged_args *emulator::tokenize(std::string str)
             device = DEV_CLOCK;
             break;
         }
+        if (temp == "cache")
+        {
+            device = DEV_CACHE;
+            break;
+        }
         std::cout << "Device " << temp << " not found!" << std::endl;
         return nullptr;
     }
@@ -82,6 +87,18 @@ struct tagged_args *emulator::tokenize(std::string str)
         if (temp == "tick")
         {
             command = CMD_TICK;
+            break;
+        }
+
+        if (temp == "on")
+        {
+            command = CMD_ON;
+            break;
+        }
+
+        if (temp == "off")
+        {
+            command = CMD_OFF;
             break;
         }
     }
@@ -238,6 +255,26 @@ void emulator::passCommand(devices device, commands command, std::string args[])
             break;
         default:
             std::cout << "Command not found for device CPU!" << std::endl;
+            break;
+        }
+        break;
+    case DEV_CACHE:
+        switch (command)
+        {
+        case CMD_RESET:
+            em_cache->reset();
+            break;
+        case CMD_ON:
+            em_cache->on();
+            break;
+        case CMD_OFF:
+            em_clock->off();
+            break;
+        case CMD_DUMP:
+            em_clock->dump();
+            break;
+        default:
+            std::cout << "Command not found for device CACHE!" << std::endl;
             break;
         }
         break;
