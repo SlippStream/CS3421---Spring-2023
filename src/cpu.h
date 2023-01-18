@@ -33,14 +33,16 @@ enum entropyArgTags
     TARGET = 3,
     IMMEDIATE = 4
 };
-class emulCpu : public stateMachine
+class emulCpu : public clockClient
 {
 private:
     uint8_t registers[8];
     uint8_t programCounter;
     uint16_t tickCounter;
+    uint16_t lastTicked;
     emulDataMemory *dmemory;
     emulInstrMemory *imemory;
+    emulCache *cache;
     entropyInstructions pendingInstruction;
     unsigned int current_instruction;
     uint8_t entropyTokens[5];
@@ -55,7 +57,7 @@ public:
     void startTick();
     bool isMoreCycleWorkNeeded();
 
-    void initialize(emulDataMemory *, emulInstrMemory *);
+    void initialize(emulDataMemory *, emulInstrMemory *, emulCache *);
     void reset();
     void setReg(int, uint8_t);
     void dump();

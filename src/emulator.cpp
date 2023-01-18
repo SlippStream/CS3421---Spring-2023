@@ -9,7 +9,7 @@ struct tagged_args
 
 emulator::emulator()
 {
-    em_cpu->initialize(em_dmemory, em_imemory);
+    em_cpu->initialize(em_dmemory, em_imemory, em_cache);
     clock_clients = std::vector<clockClient *>();
 
     // Add clock clients
@@ -268,10 +268,10 @@ void emulator::passCommand(devices device, commands command, std::string args[])
             em_cache->on();
             break;
         case CMD_OFF:
-            em_clock->off();
+            em_cache->off();
             break;
         case CMD_DUMP:
-            em_clock->dump();
+            em_cache->dump();
             break;
         default:
             std::cout << "Command not found for device CACHE!" << std::endl;

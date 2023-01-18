@@ -6,23 +6,24 @@ enum stateMachineStates
     IDLE,
     FETCH,
     STORE,
+    CONTEXT_STORE,
     DECODE_AND_REQUEST,
     WAIT,
     HALTED,
 };
 
-class clockClient
+class stateMachine
+{
+protected:
+    stateMachineStates state;
+};
+
+class clockClient : public stateMachine
 {
 public:
     virtual void doCycleWork() = 0;
     virtual void startTick() = 0;
     virtual bool isMoreCycleWorkNeeded() = 0;
-};
-
-class stateMachine : public clockClient
-{
-protected:
-    stateMachineStates state;
 };
 
 #endif
