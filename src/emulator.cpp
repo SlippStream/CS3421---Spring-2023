@@ -10,11 +10,13 @@ struct tagged_args
 emulator::emulator()
 {
     em_cpu->initialize(em_dmemory, em_imemory, em_cache);
+    em_io->initialize(em_dmemory);
     clock_clients = std::vector<clockClient *>();
 
     // Add clock clients
     clock_clients.push_back(em_cpu);
     clock_clients.push_back(em_dmemory);
+    clock_clients.push_back(em_io);
 }
 
 struct tagged_args *emulator::tokenize(std::string str)
@@ -52,6 +54,11 @@ struct tagged_args *emulator::tokenize(std::string str)
         if (temp == "cache")
         {
             device = DEV_CACHE;
+            break;
+        }
+        if (temp == "iodev")
+        {
+            device = DEV_IO;
             break;
         }
         std::cout << "Device " << temp << " not found!" << std::endl;
@@ -99,6 +106,12 @@ struct tagged_args *emulator::tokenize(std::string str)
         if (temp == "off")
         {
             command = CMD_OFF;
+            break;
+        }
+
+        if (temp == "load")
+        {
+            command = CMD_LOAD;
             break;
         }
     }
@@ -275,6 +288,23 @@ void emulator::passCommand(devices device, commands command, std::string args[])
             break;
         default:
             std::cout << "Command not found for device CACHE!" << std::endl;
+            break;
+        }
+        break;
+    case DEV_IO:
+        switch (command)
+        {
+        case CMD_LOAD:
+            em_io->load(args[0]);
+            break;
+        case CMD_RESET:
+            em_io->reset();
+            break;
+        case CMD_DUMP:
+            em_io->dump();
+            break;
+        default:
+            std::cout << "Command not found for device IO DEVICE!" << std::endl;
             break;
         }
         break;

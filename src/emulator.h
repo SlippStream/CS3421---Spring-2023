@@ -1,9 +1,5 @@
 #ifndef CS3421_NICKZIMANSKI_EMULATOR_H
 #define CS3421_NICKZIMANSKI_EMULATOR_H
-#include <stdio.h>
-#include <string>
-#include <sstream>
-#include <fstream>
 #ifndef CS3421_NICKZIMANSKI_CLOCK_H
 #include "clock.h"
 #endif
@@ -12,10 +8,11 @@ enum devices
 {
     DEV_CPU = 1,
     DEV_DMEMORY = 2,
+    DEV_IO = 3,
     /** end clock clients */
-    DEV_CLOCK = 3,
-    DEV_IMEMORY = 4,
-    DEV_CACHE = 5
+    DEV_CLOCK = 4,
+    DEV_IMEMORY = 5,
+    DEV_CACHE = 6
 };
 enum commands
 {
@@ -25,7 +22,8 @@ enum commands
     CMD_SET,
     CMD_TICK,
     CMD_ON,
-    CMD_OFF
+    CMD_OFF,
+    CMD_LOAD
 };
 class emulator
 {
@@ -38,6 +36,7 @@ public:
     emulClock *em_clock = new emulClock();
     emulCpu *em_cpu = new emulCpu();
     emulCache *em_cache = new emulCache();
+    emulIODevice *em_io = new emulIODevice();
     emulator();
     /**
      * Replaces all instances of a given delimeter with null terminator characters

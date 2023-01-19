@@ -2,6 +2,7 @@
 #define CS3421_NICKZIMANSKI_CLOCK_H
 #ifndef CS3421_NICKZIMANSKI_CPU_H
 #include "cpu.h"
+#include "IODevice.h"
 #endif
 
 class emulClock

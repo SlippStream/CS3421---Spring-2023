@@ -137,7 +137,8 @@ void emulCache::requestLine(uint8_t address, uint8_t *writePtr, bool *donePtr)
     waitingAddress = address;
     waitingAnswerPtr = writePtr;
     waitingDonePtr = donePtr;
-    dmemory->startFetch(address, 8, &mirror_data[0], selfishDonePtr);
+    setCLO(address);
+    dmemory->startFetch(CLO * 8, 8, &mirror_data[0], selfishDonePtr);
     state = FETCH;
 }
 
@@ -152,6 +153,7 @@ void emulCache::startMemFetch(uint8_t address, uint8_t *writePtr, bool *donePtr)
     if (address == 0xFF)
     {
         invalidate();
+        *donePtr = true;
         return;
     }
 
@@ -227,7 +229,7 @@ void emulCache::doCycleWork()
         {
             if (mirror_states[i] == WRITTEN)
             {
-                mirror_states[i] == VALID;
+                mirror_states[i] = VALID;
             }
         }
         *waitingDonePtr = true;
@@ -236,7 +238,6 @@ void emulCache::doCycleWork()
     }
     if (state == FETCH)
     {
-        setCLO(waitingAddress);
         for (int i = 0; i < 8; i++)
         {
             mirror_states[i] = VALID;
