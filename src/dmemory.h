@@ -9,23 +9,22 @@
 #include <stdio.h>
 #include <iomanip>
 
-class emulDataMemory : public clockClient
+class emulDataMemory : public stateMachine
 {
 private:
-    uint8_t op_address;
+    uint8_t *op_addressPtr;
     uint8_t *op_answerPtr;
-    bool *op_validityPtr;
-    uint8_t *bytes;
     unsigned int wait_ticks;
     bool cycleDone;
     bool *op_donePtr;
     unsigned int op_count;
     int sz;
     void cpy(uint8_t *, uint8_t *, unsigned int);
-    void executeFetch(uint8_t, unsigned int, uint8_t *, bool *);
-    void executeStore(uint8_t, unsigned int, uint8_t *, bool *);
+    void executeFetch(uint8_t *, unsigned int, uint8_t *, bool *);
+    void executeStore(uint8_t *, unsigned int, uint8_t *, bool *);
 
 public:
+    uint8_t *bytes;
     emulDataMemory();
 
     // Clock Client
@@ -37,9 +36,7 @@ public:
     void reset();
     void dump(uint8_t, uint8_t);
     void set(uint8_t, uint8_t, std::string[], int);
-    void startFetch(uint8_t, unsigned int, uint8_t *, bool *);
-    void startStore(uint8_t, unsigned int, uint8_t *, bool *);
-    void startContextStore(uint8_t, unsigned int, uint8_t *, bool *, bool *);
-    void executeContextStore(uint8_t, unsigned int, uint8_t *, bool *, bool *);
+    void startFetch(uint8_t *, unsigned int, uint8_t *, bool *);
+    void startStore(uint8_t *, unsigned int, uint8_t *, bool *);
 };
 #endif

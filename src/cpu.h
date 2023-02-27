@@ -6,9 +6,6 @@
 #ifndef CS3421_NICKZIMANSKI_IMEMORY_H
 #include "imemory.h"
 #endif
-#ifndef CS3421_NICKZIMANSKI_CACHE_H
-#include "cache.h"
-#endif
 #include <vector>
 
 enum entropyInstructions
@@ -33,16 +30,13 @@ enum entropyArgTags
     TARGET = 3,
     IMMEDIATE = 4
 };
-class emulCpu : public clockClient
+class emulCpu : public stateMachine
 {
 private:
     uint8_t registers[8];
     uint8_t programCounter;
-    uint16_t tickCounter;
-    uint16_t lastTicked;
     emulDataMemory *dmemory;
     emulInstrMemory *imemory;
-    emulCache *cache;
     entropyInstructions pendingInstruction;
     unsigned int current_instruction;
     uint8_t entropyTokens[5];
@@ -57,7 +51,7 @@ public:
     void startTick();
     bool isMoreCycleWorkNeeded();
 
-    void initialize(emulDataMemory *, emulInstrMemory *, emulCache *);
+    void initialize(emulDataMemory *, emulInstrMemory *);
     void reset();
     void setReg(int, uint8_t);
     void dump();
@@ -65,7 +59,6 @@ public:
     void executeInstruction();
     void executeDelayedInstruction();
     void releaseToIdle();
-    void increment();
 
     void instr_add();
     void instr_addImmediate();

@@ -9,21 +9,37 @@ emulCpu::emulCpu()
     wait_ticks = 0;
 }
 
-void emulCpu::initialize(emulDataMemory *dmem, emulInstrMemory *imem, emulCache *che)
+void emulCpu::initialize(emulDataMemory *dmem, emulInstrMemory *imem)
 {
     dmemory = dmem;
     imemory = imem;
-    cache = che;
-    cache->initialize(dmemory);
 }
 
 void emulCpu::startTick()
 {
     if (state == HALTED)
         return;
+    if (state == WAIT)
+    {
+        if (wait_ticks > 0)
+        {
+            wait_ticks--;
+            if (wait_ticks != 0)
+            {
+                return;
+            }
+            executeDelayedInstruction();
+        }
+        else if (!(*donePtr))
+        {
+            return;
+        }
 
-    workToDo = true;
-    tickCounter++;
+        if (*donePtr)
+        {
+            releaseToIdle();
+        }
+    }
 
     if (state == IDLE)
     {
@@ -33,12 +49,13 @@ void emulCpu::startTick()
 
 void emulCpu::doCycleWork()
 {
-    if (state == HALTED)
+    if (state == WAIT || state == IDLE || state == HALTED)
     {
         workToDo = false;
         return;
     }
 
+    workToDo = true;
     if (state == FETCH)
     {
         fetch();
@@ -47,31 +64,6 @@ void emulCpu::doCycleWork()
     if (state == DECODE_AND_REQUEST)
     {
         executeInstruction();
-    }
-
-    if (lastTicked != tickCounter)
-    {
-        lastTicked = tickCounter;
-        cache->doCycleWork();
-        if (state == WAIT)
-        {
-            workToDo = false;
-            if (wait_ticks > 0)
-            {
-                wait_ticks--;
-                if (wait_ticks != 0)
-                {
-                    return;
-                }
-                executeDelayedInstruction();
-            }
-            else if (!(*donePtr))
-            {
-                return;
-            }
-
-            releaseToIdle();
-        }
     }
 }
 
@@ -168,12 +160,10 @@ bool emulCpu::isMoreCycleWorkNeeded()
 void emulCpu::reset()
 {
     programCounter = 0;
-    tickCounter = 0;
     for (int i = 0; i < NUM_REG; i++)
     {
         registers[i] = 0;
     }
-    state = IDLE;
 }
 
 void emulCpu::setReg(int index, uint8_t newVal)
@@ -198,9 +188,7 @@ void emulCpu::dump()
                   << ": 0x" << std::setw(2) << std::setfill('0')
                   << std::uppercase << std::hex << (int)registers[i] << std::endl;
     }
-
-    std::cout << "TC: " << std::dec << (int)tickCounter << std::endl
-              << std::endl;
+    std::cout << std::endl;
 }
 int emulCpu::getRegisterIndex(char const (&registerName)[3])
 {
@@ -219,8 +207,8 @@ int emulCpu::getRegisterIndex(char const (&registerName)[3])
 
 void emulCpu::releaseToIdle()
 {
+    state = IDLE;
     programCounter++;
-    state = FETCH;
     workToDo = false;
     *donePtr = false;
 }
@@ -300,38 +288,30 @@ void emulCpu::instr_branchIfLessThan()
     }
     releaseToIdle();
 }
-// This instruction takes 5 ticks on cache miss
+// This instruction takes 5 ticks
 void emulCpu::instr_loadWord()
 {
+    // std::cout << "Load " << (int)*(dmemory->bytes + registers[(int)target]) << " into register " << (char)('A' + destination) << std::endl;
     *donePtr = false;
-    cache->startMemFetch(registers[entropyTokens[TARGET]], &registers[entropyTokens[DESTINATION]], donePtr);
-    // dmemory->startFetch(registers[entropyTokens[TARGET]], 1, &registers[entropyTokens[DESTINATION]], donePtr);
+    dmemory->startFetch(dmemory->bytes + registers[entropyTokens[TARGET]], 1, &registers[entropyTokens[DESTINATION]], donePtr);
     workToDo = false;
-    wait_ticks = 0;
     state = WAIT;
 }
 
 // This instruction takes 5 ticks
 void emulCpu::instr_storeWord()
 {
+    // std::cout << "Storing " << (int)registers[source] << " to " << (char)('A' + (int)target) << std::endl;
     *donePtr = false;
-    cache->startMemStore(registers[entropyTokens[TARGET]], &registers[entropyTokens[SOURCE]], donePtr);
-    // dmemory->startStore(registers[entropyTokens[TARGET]], 1, &registers[entropyTokens[SOURCE]], donePtr);
+    dmemory->startStore(dmemory->bytes + registers[entropyTokens[TARGET]], 1, &registers[entropyTokens[SOURCE]], donePtr);
     workToDo = false;
-    wait_ticks = 0;
     state = WAIT;
 }
-
 void emulCpu::instr_halt()
 {
     state = HALTED;
-    increment();
-    workToDo = false;
-}
-
-void emulCpu::increment()
-{
     programCounter++;
+    workToDo = false;
 }
 
 int emulCpu::twoCpCmp(uint8_t a, uint8_t b)

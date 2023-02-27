@@ -9,14 +9,12 @@ struct tagged_args
 
 emulator::emulator()
 {
-    em_cpu->initialize(em_dmemory, em_imemory, em_cache);
-    em_io->initialize(em_dmemory);
+    em_cpu->initialize(em_dmemory, em_imemory);
     clock_clients = std::vector<clockClient *>();
 
     // Add clock clients
     clock_clients.push_back(em_cpu);
     clock_clients.push_back(em_dmemory);
-    clock_clients.push_back(em_io);
 }
 
 struct tagged_args *emulator::tokenize(std::string str)
@@ -27,10 +25,15 @@ struct tagged_args *emulator::tokenize(std::string str)
     commands command;
 
     std::string temp;
+    //! ADD THIS
+    if (str.length() < 2)
+    {
+        return nullptr;
+    }
+    //! END ADD THIS
     // Grab device
     while (ss >> temp)
     {
-        // std::cout << "device " << temp << std::endl;
         if (temp == "memory")
         {
             device = DEV_DMEMORY;
@@ -49,16 +52,6 @@ struct tagged_args *emulator::tokenize(std::string str)
         if (temp == "clock")
         {
             device = DEV_CLOCK;
-            break;
-        }
-        if (temp == "cache")
-        {
-            device = DEV_CACHE;
-            break;
-        }
-        if (temp == "iodev")
-        {
-            device = DEV_IO;
             break;
         }
         std::cout << "Device " << temp << " not found!" << std::endl;
@@ -96,27 +89,10 @@ struct tagged_args *emulator::tokenize(std::string str)
             command = CMD_TICK;
             break;
         }
-
-        if (temp == "on")
-        {
-            command = CMD_ON;
-            break;
-        }
-
-        if (temp == "off")
-        {
-            command = CMD_OFF;
-            break;
-        }
-
-        if (temp == "load")
-        {
-            command = CMD_LOAD;
-            break;
-        }
     }
     // Grab arguments
     std::vector<std::string> vec;
+    bool valid = false; //! THIS IS THE FIX FOR SEGFAULTS
     while (ss >> temp)
     {
         if (device == DEV_IMEMORY && command == CMD_SET && temp == "file")
@@ -128,14 +104,14 @@ struct tagged_args *emulator::tokenize(std::string str)
             continue;
         }
         vec.push_back(temp);
+        valid = true; //! THIS IS THE FIX FOR SEGFAULTS
     }
 
     std::string *args;
-    if (vec.size() > 0)
+    if (vec.size() > 0 && valid) //! THIS IS THE FIX FOR SEGFAULTS
     {
-        //! WILL CAUSE SEGFAULT IF GIVEN NO ARGUMENTS
         args = new std::string[vec.size()];
-        for (unsigned int i = 0; i < vec.size(); i++)
+        for (unsigned long int i = 0; i < vec.size(); i++)
         {
             args[i] = vec.at(i);
         }
@@ -156,6 +132,10 @@ void emulator::emulate(std::ifstream &stream)
         {
             std::getline(stream, buffer);
             tagged_args *tags = tokenize(buffer);
+            if (tags == nullptr)
+            {
+                continue;
+            }
 
             passCommand(tags->device, tags->command, tags->args);
         }
@@ -218,7 +198,8 @@ void emulator::passCommand(devices device, commands command, std::string args[])
             while (!file.eof())
             {
                 std::getline(file, temp);
-                vec.push_back(temp);
+                if (temp.length() != 0) //! THIS IS A FIX FOR BROKEN STOUL
+                    vec.push_back(temp);
             }
 
             // std::cout << "vec size " << vec.size() << std::endl;
@@ -261,7 +242,9 @@ void emulator::passCommand(devices device, commands command, std::string args[])
             em_cpu->reset();
             break;
         case CMD_SET:
+            std::cout << args[2] << "\n";
             em_cpu->setReg(std::stoi(args[1], nullptr, 16), std::stoul(args[2], nullptr, 16) & 0xFF);
+            std::cout << "after cpu set\n";
             break;
         case CMD_DUMP:
             em_cpu->dump();
@@ -271,45 +254,8 @@ void emulator::passCommand(devices device, commands command, std::string args[])
             break;
         }
         break;
-    case DEV_CACHE:
-        switch (command)
-        {
-        case CMD_RESET:
-            em_cache->reset();
-            break;
-        case CMD_ON:
-            em_cache->on();
-            break;
-        case CMD_OFF:
-            em_cache->off();
-            break;
-        case CMD_DUMP:
-            em_cache->dump();
-            break;
-        default:
-            std::cout << "Command not found for device CACHE!" << std::endl;
-            break;
-        }
-        break;
-    case DEV_IO:
-        switch (command)
-        {
-        case CMD_LOAD:
-            em_io->load(args[0]);
-            break;
-        case CMD_RESET:
-            em_io->reset();
-            break;
-        case CMD_DUMP:
-            em_io->dump();
-            break;
-        default:
-            std::cout << "Command not found for device IO DEVICE!" << std::endl;
-            break;
-        }
-        break;
     default:
-        std::cout << "Device not found!" << std::endl;
+        std::cout << "Device " << device << " not found!" << std::endl;
         break;
     }
 }

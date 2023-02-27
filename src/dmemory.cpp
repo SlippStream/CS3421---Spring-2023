@@ -62,60 +62,36 @@ void emulDataMemory::set(uint8_t address, uint8_t count, std::string bytez[], in
     }
 }
 
-void emulDataMemory::startFetch(uint8_t address, unsigned int count, uint8_t *writePtr, bool *donePtr)
+void emulDataMemory::startFetch(uint8_t *address, unsigned int count, uint8_t *writePtr, bool *donePtr)
 {
     state = FETCH;
-    op_address = address;
+    op_addressPtr = address;
     op_count = count;
     op_answerPtr = writePtr;
     op_donePtr = donePtr;
     wait_ticks = 0;
 }
 
-void emulDataMemory::executeFetch(uint8_t address, unsigned int count, uint8_t *writePtr, bool *donePtr)
+void emulDataMemory::executeFetch(uint8_t *address, unsigned int count, uint8_t *writePtr, bool *donePtr)
 {
-    cpy(writePtr, bytes + address, count);
+    cpy(writePtr, address, count);
     cycleDone = true;
     *donePtr = true;
 }
 
-void emulDataMemory::startStore(uint8_t address, unsigned int count, uint8_t *readPtr, bool *donePtr)
+void emulDataMemory::startStore(uint8_t *address, unsigned int count, uint8_t *readPtr, bool *donePtr)
 {
     state = STORE;
-    op_address = address;
+    op_addressPtr = address;
     op_count = count;
     op_answerPtr = readPtr;
     op_donePtr = donePtr;
     wait_ticks = 0;
 }
 
-void emulDataMemory::executeStore(uint8_t address, unsigned int count, uint8_t *readPtr, bool *donePtr)
+void emulDataMemory::executeStore(uint8_t *address, unsigned int count, uint8_t *readPtr, bool *donePtr)
 {
-    cpy(bytes + address, readPtr, count);
-    cycleDone = true;
-    *donePtr = true;
-}
-
-void emulDataMemory::startContextStore(uint8_t address, unsigned int count, uint8_t *readPtr, bool *validityPtr, bool *donePtr)
-{
-    state = CONTEXT_STORE;
-    op_address = address;
-    op_count = count;
-    op_answerPtr = readPtr;
-    op_donePtr = donePtr;
-    op_validityPtr = validityPtr;
-    wait_ticks = 0;
-}
-
-void emulDataMemory::executeContextStore(uint8_t address, unsigned int count, uint8_t *readPtr, bool *validityPtr, bool *donePtr)
-{
-    for (unsigned int i = 0; i < count; i++)
-    {
-        if (*(validityPtr + i))
-        {
-            *(bytes + address + i) = *(readPtr + i);
-        }
-    }
+    cpy(address, readPtr, count);
     cycleDone = true;
     *donePtr = true;
 }
@@ -142,7 +118,7 @@ void emulDataMemory::doCycleWork()
     }
 
     /** Fetch / Store */
-    if (wait_ticks < 3)
+    if (wait_ticks < 4)
     {
         cycleDone = true;
         return;
@@ -151,21 +127,14 @@ void emulDataMemory::doCycleWork()
 
     if (state == FETCH)
     {
-        executeFetch(op_address, op_count, op_answerPtr, op_donePtr);
+        executeFetch(op_addressPtr, op_count, op_answerPtr, op_donePtr);
         state = IDLE;
         return;
     }
 
     if (state == STORE)
     {
-        executeStore(op_address, op_count, op_answerPtr, op_donePtr);
-        state = IDLE;
-        return;
-    }
-
-    if (state == CONTEXT_STORE)
-    {
-        executeContextStore(op_address, op_count, op_answerPtr, op_validityPtr, op_donePtr);
+        executeStore(op_addressPtr, op_count, op_answerPtr, op_donePtr);
         state = IDLE;
         return;
     }
